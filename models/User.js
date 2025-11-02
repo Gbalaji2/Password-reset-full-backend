@@ -33,8 +33,4 @@ userSchema.methods.toJSON = function () {
   return user;
 };
 
-<<<<<<< HEAD
 export default mongoose.model("User", userSchema);
-=======
-export default mongoose.model("User", userSchema);
->>>>>>> bb52c59cbb474e2879f0926af145adda17f1ddd8
