@@ -8,16 +8,22 @@ import jwt from "jsonwebtoken";
 const router = express.Router();
 
 // Forgot password route
+// Forgot password route
 router.post("/forgot-password", async (req, res) => {
   try {
     const { email } = req.body;
+    console.log("🔍 Forgot-password request for:", email); // ✅ log email
+
     const user = await User.findOne({ email });
 
     if (!user) {
+      console.log("❌ No user found for this email");
       return res
         .status(200)
         .json({ message: "If email exists, reset link sent." });
     }
+
+    console.log("✅ User found:", user.email);
 
     const token = crypto.randomBytes(32).toString("hex");
     user.resetPasswordToken = crypto
@@ -31,7 +37,7 @@ router.post("/forgot-password", async (req, res) => {
     const resetURL = `${process.env.FRONTEND_URL}/reset-password?token=${token}&email=${email}`;
     const message = `<p>Click <a href="${resetURL}">here</a> to reset your password. Valid for 1 hour.</p>`;
 
-    console.log("RESET TOKEN:", token); // Debug purpose
+    console.log("✅ RESET TOKEN:", token); // ✅ token log
 
     await sendEmail(email, "Password Reset", message);
 
