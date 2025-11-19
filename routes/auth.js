@@ -7,79 +7,89 @@ import jwt from "jsonwebtoken";
 
 const router = express.Router();
 
-// Forgot password route
-// Forgot password route
+/* ---------------------- FORGOT PASSWORD ---------------------- */
 router.post("/forgot-password", async (req, res) => {
   try {
     const { email } = req.body;
-    console.log("🔍 Forgot-password request for:", email); // ✅ log email
+
+    if (!email) return res.status(400).json({ message: "Email is required" });
 
     const user = await User.findOne({ email });
 
+    // SAFETY: Do not reveal if user exists
     if (!user) {
-      console.log("❌ No user found for this email");
-      return res
-        .status(200)
-        .json({ message: "If email exists, reset link sent." });
+      return res.status(200).json({ message: "If email exists, reset link sent." });
     }
 
-    console.log("✅ User found:", user.email);
-
+    // Generate reset token
     const token = crypto.randomBytes(32).toString("hex");
+
     user.resetPasswordToken = crypto
       .createHash("sha256")
       .update(token)
       .digest("hex");
-    user.resetPasswordExpire = Date.now() + 3600000;
+
+    user.resetPasswordExpire = Date.now() + 3600000; // 1 hour
 
     await user.save();
 
     const resetURL = `${process.env.FRONTEND_URL}/reset-password?token=${token}&email=${email}`;
-    const message = `<p>Click <a href="${resetURL}">here</a> to reset your password. Valid for 1 hour.</p>`;
 
-    console.log("✅ RESET TOKEN:", token); // ✅ token log
+    const message = `
+      <p>Click <a href="${resetURL}">here</a> to reset your password. Valid for 1 hour.</p>
+    `;
 
     await sendEmail(email, "Password Reset", message);
 
     res.json({ message: "Reset link sent if email exists." });
   } catch (error) {
     console.error("Forgot-password error:", error);
-
-    return res.status(500).json({
-      message: "Internal server error",
-      error: error.message
-    });
+    res.status(500).json({ message: "Internal server error" });
   }
 });
 
-// Reset password route
+/* ---------------------- RESET PASSWORD ---------------------- */
 router.post("/reset-password", async (req, res) => {
-  const { token, email, password } = req.body;
-  const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+  try {
+    const { token, email, password } = req.body;
 
-  const user = await User.findOne({
-    email,
-    resetPasswordToken: hashedToken,
-    resetPasswordExpire: { $gt: Date.now() },
-  });
+    if (!token || !email || !password) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
 
-  if (!user) return res.status(400).json({ message: "Invalid or expired token" });
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
 
-  const hashedPassword = await bcrypt.hash(password, 10);
-  user.password = hashedPassword;
-  user.resetPasswordToken = undefined;
-  user.resetPasswordExpire = undefined;
-  await user.save();
+    const user = await User.findOne({
+      email,
+      resetPasswordToken: hashedToken,
+      resetPasswordExpire: { $gt: Date.now() },
+    });
 
-  res.json({ message: "Password successfully reset!" });
+    if (!user)
+      return res.status(400).json({ message: "Invalid or expired token" });
+
+    user.password = await bcrypt.hash(password, 10);
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+
+    await user.save();
+
+    res.json({ message: "Password successfully reset!" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
 });
 
-// Register
+/* ---------------------- REGISTER ---------------------- */
 router.post("/register", async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    if (!email || !password)
+      return res.status(400).json({ message: "Email and password required" });
+
     const existingUser = await User.findOne({ email });
+
     if (existingUser) {
       return res.status(400).json({ message: "Email already in use" });
     }
@@ -88,38 +98,51 @@ router.post("/register", async (req, res) => {
 
     const user = await User.create({
       email,
-      password: hashedPassword
+      password: hashedPassword,
     });
 
-    res.json({ message: "User registered successfully", user });
+    res.json({
+      message: "User registered successfully",
+      user: {
+        id: user._id,
+        email: user.email,
+      },
+    });
   } catch (err) {
+    console.error("Register error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
-// Login
+
+/* ---------------------- LOGIN ---------------------- */
 router.post("/login", async (req, res) => {
-  const { email, password } = req.body;
+  try {
+    const { email, password } = req.body;
 
-  const user = await User.findOne({ email });
-  if (!user) return res.status(400).json({ message: "Invalid credentials" });
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ message: "Invalid credentials" });
 
-  const isMatch = await bcrypt.compare(password, user.password);
-  if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch)
+      return res.status(400).json({ message: "Invalid credentials" });
 
-  const token = jwt.sign(
-    { id: user._id, email: user.email },
-    process.env.JWT_SECRET,
-    { expiresIn: "1h" }
-  );
+    const token = jwt.sign(
+      { id: user._id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
 
-  res.json({
-    message: "Login successful",
-    token,
-    user: {
-      id: user._id,
-      email: user.email
-    }
-  });
+    res.json({
+      message: "Login successful",
+      token,
+      user: {
+        id: user._id,
+        email: user.email,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
 });
 
 export default router;
