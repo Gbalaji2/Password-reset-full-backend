@@ -4,17 +4,43 @@ import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
+import nodemailer from "nodemailer";
 
 const router = express.Router();
 
-/* ---------------------- FORGOT PASSWORD ---------------------- */
+// ---------------------- SEND EMAIL FUNCTION ----------------------
+const sendEmail = async (to, subject, html) => {
+  try {
+    const transporter = nodemailer.createTransport({
+      service: "gmail", // Or any other SMTP service
+      auth: {
+        user: process.env.EMAIL_USER, // Your Gmail
+        pass: process.env.EMAIL_PASS, // App password
+      },
+    });
+
+    await transporter.sendMail({
+      from: `"Support Team" <${process.env.EMAIL_USER}>`,
+      to,
+      subject,
+      html,
+    });
+
+    console.log("✅ Email sent successfully to", to);
+  } catch (error) {
+    console.error("❌ Email sending failed:", error.message);
+  }
+};
+
+// ---------------------- FORGOT PASSWORD ----------------------
 router.post("/forgot-password", async (req, res) => {
   try {
     const email = req.body.email?.trim().toLowerCase();
     if (!email) return res.status(400).json({ message: "Email is required" });
 
     const user = await User.findOne({ email });
-    if (!user) return res.status(200).json({ message: "If email exists, reset link sent." });
+    if (!user)
+      return res.status(200).json({ message: "If email exists, reset link sent." });
 
     // Generate reset token
     const token = crypto.randomBytes(32).toString("hex");
@@ -22,13 +48,24 @@ router.post("/forgot-password", async (req, res) => {
     user.resetPasswordExpire = Date.now() + 3600000; // 1 hour
     await user.save();
 
-    // For testing, log token (Postman can use it for reset)
-    console.log("✅ Reset token:", token);
+    // Reset URL for email
+    const resetURL = `${process.env.FRONTEND_URL}/reset-password?token=${token}&email=${email}`;
+    const message = `
+      <p>You requested a password reset.</p>
+      <p>Click <a href="${resetURL}">here</a> to reset your password. This link is valid for 1 hour.</p>
+      <p>If you did not request this, please ignore this email.</p>
+    `;
 
+    // Send email (ignore errors, still return token for Postman)
+    sendEmail(email, "Password Reset", message);
+
+    // For testing: return token in response
     res.json({
       message: "Reset link sent if email exists",
-      token, // include token for Postman testing
+      token, // use in Postman for /reset-password testing
     });
+
+    console.log("✅ Reset token for testing:", token);
   } catch (error) {
     console.error("Forgot-password error:", error);
     res.status(500).json({ message: "Internal server error" });
