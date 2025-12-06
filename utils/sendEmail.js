@@ -4,24 +4,26 @@ import nodemailer from "nodemailer";
 const sendEmail = async (to, subject, html) => {
   try {
     const transporter = nodemailer.createTransport({
-      service: "gmail", // <– easier and more reliable than host/port for Gmail
+      host: process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com",
+      port: process.env.BREVO_SMTP_PORT || 587,
+      secure: false,
       auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS, // must be App Password (not normal Gmail password)
+        user: process.env.BREVO_SMTP_USER,
+        pass: process.env.BREVO_SMTP_PASS, // SMTP Key (NOT API Key)
       },
     });
 
     const mailOptions = {
-      from: `"Support Team" <${process.env.EMAIL_USER}>`,
+      from: `"Support Team" <${process.env.BREVO_SMTP_USER}>`,
       to,
       subject,
       html,
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log("✅ Email sent successfully:", info.response);
+    console.log("✅ Brevo email sent:", info.messageId);
   } catch (error) {
-    console.error("❌ Email sending failed:", error.message);
+    console.error("❌ Brevo email send failed:", error.message);
     throw new Error("Email could not be sent");
   }
 };
