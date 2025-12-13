@@ -1,7 +1,7 @@
 // routes/auth.js
 import express from "express";
 import crypto from "crypto";
-import bcrypt from "bcryptjs";
+import bcrypt from "bcrypt";
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
@@ -79,7 +79,10 @@ router.post("/reset-password", async (req, res) => {
     if (!token || !email || !password)
       return res.status(400).json({ message: "Missing required fields" });
 
-    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(token)
+      .digest("hex");
 
     const user = await User.findOne({
       email: email.trim().toLowerCase(),
@@ -87,10 +90,10 @@ router.post("/reset-password", async (req, res) => {
       resetPasswordExpire: { $gt: Date.now() },
     });
 
-    if (!user) return res.status(400).json({ message: "Invalid or expired token" });
+    if (!user)
+      return res.status(400).json({ message: "Invalid or expired token" });
 
-    // Hash new password
-    user.password = await bcrypt.hash(password, 10);
+    user.password = password; // model hashes
     user.resetPasswordToken = undefined;
     user.resetPasswordExpire = undefined;
 
@@ -103,23 +106,25 @@ router.post("/reset-password", async (req, res) => {
 });
 
 /* ---------------------- REGISTER ---------------------- */
+
 router.post("/register", async (req, res) => {
   try {
     const email = req.body.email?.trim().toLowerCase();
-    const password = req.body.password?.trim();
+    const password = req.body.password;
+
     if (!email || !password)
       return res.status(400).json({ message: "Email and password required" });
 
     const existingUser = await User.findOne({ email });
-    if (existingUser) return res.status(400).json({ message: "Email already in use" });
+    if (existingUser)
+      return res.status(400).json({ message: "Email already in use" });
 
-    const hashedPassword = await bcrypt.hash(password, 10);
     const user = await User.create({
       email,
-      password: hashedPassword,
+      password, // plain → model hashes
     });
 
-    res.json({
+    res.status(201).json({
       message: "User registered successfully",
       user: { id: user._id, email: user.email },
     });
@@ -133,22 +138,30 @@ router.post("/register", async (req, res) => {
 router.post("/login", async (req, res) => {
   try {
     const email = req.body.email?.trim().toLowerCase();
-    const password = req.body.password?.trim();
+    const password = req.body.password;
 
     if (!email || !password)
       return res.status(400).json({ message: "Email and password required" });
 
     const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ message: "Invalid credentials" });
+    if (!user)
+      return res.status(400).json({ message: "Invalid credentials" });
 
     const isMatch = await bcrypt.compare(password, user.password);
-    console.log("Password match result:", isMatch);
+    if (!isMatch)
+      return res.status(400).json({ message: "Invalid credentials" });
 
-    if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
+    const token = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
 
-    const token = jwt.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET, { expiresIn: "1h" });
-
-    res.json({ message: "Login successful", token, user: { id: user._id, email: user.email } });
+    res.status(200).json({
+      message: "Login successful",
+      token,
+      user: { id: user._id, email: user.email },
+    });
   } catch (err) {
     console.error("Login error:", err);
     res.status(500).json({ message: "Server error" });
