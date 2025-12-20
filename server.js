@@ -39,6 +39,14 @@ mongoose
 // API Routes
 app.use("/api/auth", authRoutes);
 
+// ✅ Test route to check env variables
+app.get("/test-env", (req, res) => {
+  res.json({
+    user: process.env.BREVO_SMTP_USER,
+    passLoaded: !!process.env.BREVO_SMTP_PASS,
+  });
+});
+
 // Default route
 app.get("/", (req, res) => {
   res.send("Backend is running ✅");
