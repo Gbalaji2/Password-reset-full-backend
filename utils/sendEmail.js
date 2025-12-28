@@ -1,35 +1,29 @@
-// utils/sendEmail.js
 import nodemailer from "nodemailer";
 
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASS,
+  },
+});
+
 const sendEmail = async (to, subject, html) => {
-
-  // 🔍 TEMP DEBUG LOG (ADD HERE)
-  console.log("SMTP PASS loaded:", !!process.env.BREVO_SMTP_PASS);
-
   try {
-    const transporter = nodemailer.createTransport({
-      host: "smtp-relay.brevo.com",
-      port: 587,
-      secure: false,
-      auth: {
-        user: "apikey",
-        pass: process.env.BREVO_SMTP_PASS,
-      },
-    });
-
-    const mailOptions = {
-      from: `"Support Team" <sbalajigowtham@gmail.com>`,
+    await transporter.sendMail({
+      from: `"Support Team" <${process.env.GMAIL_USER}>`,
       to,
       subject,
       html,
-    };
-
-    const info = await transporter.sendMail(mailOptions);
-    console.log("✅ Brevo email sent:", info.messageId);
+    });
+    console.log("✅ Email sent to:", to);
   } catch (error) {
-    console.error("❌ Brevo email send failed:", error);
-    throw new Error("Email could not be sent");
+    console.error("❌ Gmail SMTP error:", error);
+    throw error;
   }
 };
+
+console.log("GMAIL_USER:", process.env.GMAIL_USER);
+console.log("GMAIL_APP_PASS:", process.env.GMAIL_APP_PASS ? "Loaded ✅" : "Not loaded ❌");
 
 export default sendEmail;

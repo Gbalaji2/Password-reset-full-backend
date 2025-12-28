@@ -1,26 +1,28 @@
-import express from "express";
+// Load environment variables immediately
 import dotenv from "dotenv";
+dotenv.config();
+
+import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
 import authRoutes from "./routes/auth.js";
 
-dotenv.config();
 const app = express();
 
-// Body parsers
+// -------------------- Body Parsers --------------------
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// ✅ Correct CORS Setup
+// -------------------- CORS Setup --------------------
 const allowedOrigins = [
-  process.env.FRONTEND_URL,     // Netlify production frontend
-  "http://localhost:5173"       // Local development frontend
+  process.env.FRONTEND_URL,   // Production frontend
+  "http://localhost:5173"     // Local frontend
 ];
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      if (!origin) return callback(null, true); // allow non-browser tools
+      if (!origin) return callback(null, true); // Allow Postman or non-browser tools
       if (allowedOrigins.includes(origin)) return callback(null, true);
       return callback(new Error("CORS not allowed by server"), false);
     },
@@ -30,29 +32,34 @@ app.use(
   })
 );
 
-// Database connect
+// -------------------- Database Connect --------------------
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB connected"))
-  .catch((err) => console.log(err));
+  .catch((err) => console.log("MongoDB connection error:", err));
 
-// API Routes
+// -------------------- API Routes --------------------
 app.use("/api/auth", authRoutes);
 
-// ✅ Test route to check env variables
+// -------------------- Test Route for Env --------------------
 app.get("/test-env", (req, res) => {
   res.json({
-    user: process.env.BREVO_SMTP_USER,
-    passLoaded: !!process.env.BREVO_SMTP_PASS,
+    user: process.env.GMAIL_USER || "Not loaded",
+    passLoaded: !!process.env.GMAIL_APP_PASS
   });
 });
 
-// Default route
+// -------------------- Default Route --------------------
 app.get("/", (req, res) => {
   res.send("Backend is running ✅");
 });
 
-// Start server
-app.listen(process.env.PORT || 5000, () => {
-  console.log("Server running...");
+// -------------------- Start Server --------------------
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}...`);
 });
+
+// -------------------- Log SMTP Info --------------------
+console.log("GMAIL_USER:", process.env.GMAIL_USER);
+console.log("GMAIL_APP_PASS loaded:", !!process.env.GMAIL_APP_PASS);
