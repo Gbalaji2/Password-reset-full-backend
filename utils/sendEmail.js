@@ -1,3 +1,6 @@
+import dotenv from "dotenv";
+dotenv.config(); // ✅ MUST be first
+
 import nodemailer from "nodemailer";
 
 const transporter = nodemailer.createTransport({
@@ -18,12 +21,15 @@ const sendEmail = async (to, subject, html) => {
     });
     console.log("✅ Email sent to:", to);
   } catch (error) {
-    console.error("❌ Gmail SMTP error:", error);
+    console.error("❌ Gmail SMTP error:", error.message);
     throw error;
   }
 };
 
 console.log("GMAIL_USER:", process.env.GMAIL_USER);
-console.log("GMAIL_APP_PASS:", process.env.GMAIL_APP_PASS ? "Loaded ✅" : "Not loaded ❌");
+console.log(
+  "GMAIL_APP_PASS:",
+  process.env.GMAIL_APP_PASS ? "Loaded ✅" : "Not loaded ❌"
+);
 
 export default sendEmail;
