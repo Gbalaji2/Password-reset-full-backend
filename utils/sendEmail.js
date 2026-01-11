@@ -19,7 +19,7 @@ const sendEmail = async (to, subject, html) => {
       secure: false,       // true for port 465
       auth: {
         user: "9d78a8001@smtp-brevo.com",                  // Must literally be "apikey"
-        pass: "xsmtpsib-4e87a0cf92ef5117595ab4a72ea61e6d7eae0b2670af2baf77998060c0aded8f-M8UlK0Yq43Jqme3t",
+        pass: process.env.BREVO_SMTP_PASS,
       },
     });
 
