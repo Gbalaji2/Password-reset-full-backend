@@ -15,14 +15,14 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // -------------------- CORS Setup --------------------
 const allowedOrigins = [
-  process.env.FRONTEND_URL,   // Production frontend
-  "http://localhost:5173"     // Local frontend
+  process.env.FRONTEND_URL,
+  "http://localhost:5173"
 ];
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      if (!origin) return callback(null, true); // Allow Postman or non-browser tools
+      if (!origin) return callback(null, true);
       if (allowedOrigins.includes(origin)) return callback(null, true);
       return callback(new Error("CORS not allowed by server"), false);
     },
@@ -41,14 +41,6 @@ mongoose
 // -------------------- API Routes --------------------
 app.use("/api/auth", authRoutes);
 
-// -------------------- Test Route for Env --------------------
-app.get("/test-env", (req, res) => {
-  res.json({
-    user: process.env.GMAIL_USER || "Not loaded",
-    passLoaded: !!process.env.GMAIL_APP_PASS
-  });
-});
-
 // -------------------- Default Route --------------------
 app.get("/", (req, res) => {
   res.send("Backend is running ✅");
@@ -60,6 +52,5 @@ app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}...`);
 });
 
-// -------------------- Log SMTP Info --------------------
-console.log("GMAIL_USER:", process.env.GMAIL_USER);
-console.log("GMAIL_APP_PASS loaded:", !!process.env.GMAIL_APP_PASS);
+// -------------------- Env sanity check --------------------
+console.log("BREVO_API_KEY loaded:", !!process.env.BREVO_API_KEY);
