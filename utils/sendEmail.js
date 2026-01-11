@@ -1,27 +1,51 @@
+// utils/sendEmail.js
 import nodemailer from "nodemailer";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+// -------------------- Ensure SMTP key exists --------------------
+if (!process.env.BREVO_SMTP_PASS) {
+  console.error("❌ BREVO_SMTP_PASS is missing in .env!");
+  process.exit(1); // Stop execution if key missing
+}
 
 const sendEmail = async (to, subject, html) => {
   try {
+    // -------------------- SMTP Transport --------------------
     const transporter = nodemailer.createTransport({
       host: "smtp-relay.brevo.com",
-      port: 587,
-      secure: false,
+      port: 587,           // 587 for TLS, 465 for SSL
+      secure: false,       // true for port 465
       auth: {
-        user: "apikey",                     // Must be literal
-        pass: process.env.BREVO_SMTP_PASS, // SMTP key
+        user: "9d78a8001@smtp-brevo.com",                  // Must literally be "apikey"
+        pass: "xsmtpsib-4e87a0cf92ef5117595ab4a72ea61e6d7eae0b2670af2baf77998060c0aded8f-M8UlK0Yq43Jqme3t",
       },
     });
 
+    // -------------------- Test connection --------------------
+    await transporter.verify(); // Throws if credentials are invalid
+    console.log("✅ SMTP connected successfully");
+
+    // -------------------- Send Email --------------------
     const info = await transporter.sendMail({
-      from: `"Your App Name" <no-reply@yourdomain.com>`, 
+      from: `"Support Team" <sbalajigowtham@gmail.com>`, // Verified sender
       to,
       subject,
       html,
     });
 
     console.log(`✅ Email sent to: ${to} | Message ID: ${info.messageId}`);
+    return info;
   } catch (error) {
-    console.error("❌ Brevo SMTP error:", error);
+    // Handle auth errors more clearly
+    if (error.code === "EAUTH") {
+      console.error(
+        "❌ SMTP Authentication failed. Check your BREVO_SMTP_PASS and sender email."
+      );
+    } else {
+      console.error("❌ Brevo SMTP error:", error);
+    }
     throw error;
   }
 };
