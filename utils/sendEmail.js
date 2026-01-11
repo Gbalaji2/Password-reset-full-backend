@@ -1,35 +1,31 @@
 import dotenv from "dotenv";
-dotenv.config(); // ✅ MUST be first
+dotenv.config();
 
 import nodemailer from "nodemailer";
 
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp-relay.brevo.com",
+  port: 587,
+  secure: false,
   auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASS,
+    user: "apikey",
+    pass: process.env.BREVO_API_KEY,
   },
 });
 
 const sendEmail = async (to, subject, html) => {
   try {
     await transporter.sendMail({
-      from: `"Support Team" <${process.env.GMAIL_USER}>`,
+      from: `"Support Team" <no-reply@yourdomain.com>`,
       to,
       subject,
       html,
     });
     console.log("✅ Email sent to:", to);
   } catch (error) {
-    console.error("❌ Gmail SMTP error:", error.message);
+    console.error("❌ Email error:", error.message);
     throw error;
   }
 };
-
-console.log("GMAIL_USER:", process.env.GMAIL_USER);
-console.log(
-  "GMAIL_APP_PASS:",
-  process.env.GMAIL_APP_PASS ? "Loaded ✅" : "Not loaded ❌"
-);
 
 export default sendEmail;
