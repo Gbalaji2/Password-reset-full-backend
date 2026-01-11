@@ -18,7 +18,7 @@ const sendEmail = async (to, subject, html) => {
       port: 587,           // 587 for TLS, 465 for SSL
       secure: false,       // true for port 465
       auth: {
-        user: "apikey",
+        user: "9d78a8001@smtp-brevo.com",
         pass: process.env.BREVO_SMTP_PASS,
       },
     });
