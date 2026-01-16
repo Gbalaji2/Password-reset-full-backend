@@ -1,51 +1,43 @@
 // utils/sendEmail.js
-import nodemailer from "nodemailer";
+import axios from "axios";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-// -------------------- Ensure SMTP key exists --------------------
-if (!process.env.BREVO_SMTP_PASS) {
-  console.error("❌ BREVO_SMTP_PASS is missing in .env!");
-  process.exit(1); // Stop execution if key missing
+// -------------------- Ensure API key exists --------------------
+if (!process.env.BREVO_API_KEY) {
+  console.error("❌ BREVO_API_KEY is missing in environment variables!");
+  process.exit(1);
 }
 
 const sendEmail = async (to, subject, html) => {
   try {
-    // -------------------- SMTP Transport --------------------
-    const transporter = nodemailer.createTransport({
-      host: "smtp-relay.brevo.com",
-      port: 587,           // 587 for TLS, 465 for SSL
-      secure: false,       // true for port 465
-      auth: {
-        user: "9d78a8001@smtp-brevo.com",
-        pass: process.env.BREVO_SMTP_PASS,
+    const response = await axios.post(
+      "https://api.brevo.com/v3/smtp/email",
+      {
+        sender: {
+          name: "Support Team",
+          email: "sbalajigowtham@gmail.com", // can be any verified sender
+        },
+        to: [{ email: to }],
+        subject,
+        htmlContent: html,
       },
-    });
+      {
+        headers: {
+          "api-key": process.env.BREVO_API_KEY,
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
-    // -------------------- Test connection --------------------
-    await transporter.verify(); // Throws if credentials are invalid
-    console.log("✅ SMTP connected successfully");
-
-    // -------------------- Send Email --------------------
-    const info = await transporter.sendMail({
-      from: `"Support Team" <sbalajigowtham@gmail.com>`, // Verified sender
-      to,
-      subject,
-      html,
-    });
-
-    console.log(`✅ Email sent to: ${to} | Message ID: ${info.messageId}`);
-    return info;
+    console.log(`✅ Email sent to ${to} | ID: ${response.data.messageId}`);
+    return response.data;
   } catch (error) {
-    // Handle auth errors more clearly
-    if (error.code === "EAUTH") {
-      console.error(
-        "❌ SMTP Authentication failed. Check your BREVO_SMTP_PASS and sender email."
-      );
-    } else {
-      console.error("❌ Brevo SMTP error:", error);
-    }
+    console.error(
+      "❌ Brevo API error:",
+      error.response?.data || error.message
+    );
     throw error;
   }
 };
